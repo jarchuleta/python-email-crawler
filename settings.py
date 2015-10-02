@@ -19,10 +19,10 @@ LOGGING = {						# dictConfig for output stream and file logging
 
 	'handlers': {
 		'console': {
-			'class': 'ColorStreamHandler.ColorStreamHandler',
+			'class': 'logging.StreamHandler',
 			'formatter':'console',
 			'level': 'DEBUG',
-			'use_colors': USE_COLORS,
+			#'use_colors': USE_COLORS,
 		},
 		'file': {
 			'class': 'logging.handlers.TimedRotatingFileHandler',
@@ -40,7 +40,7 @@ LOGGING = {						# dictConfig for output stream and file logging
 
 	'loggers': {
 		'crawler_logger': {
-			'handlers': ['console', 'file'],
+			'handlers': ['console','file'],
 			'level': 'DEBUG' if DEBUG else 'INFO',
 			'propagate': True,
 		},
