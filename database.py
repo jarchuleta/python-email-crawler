@@ -19,15 +19,23 @@ class CrawlerDb:
 		# Define the tables
 		self.website_table = Table('website', self.metadata,
 			Column('id', Integer, primary_key=True),
+			Column('title', String, nullable=True),
 			Column('url', String, nullable=False),
 			Column('has_crawled', Boolean, default=False),
 			Column('emails', String, nullable=True),
 		)
 
+		self.emails_table = Table('emails', self.metadata,
+			Column('id', Integer, primary_key=True),
+			Column('title', String, nullable=True),
+			Column('email', String, nullable=True),
+			Column('url', String, nullable=True),
+		)
+		
 		# Create the tables
 		self.metadata.create_all(self.engine)
 		
-	def enqueue(self, url, emails = None):
+	def enqueue(self, url, emails = None, title=''):
 		if not self.connected:
 			return False
 
@@ -42,7 +50,12 @@ class CrawlerDb:
 
 		args = [{'url':unicode(url)}]
 		if (emails != None):
-			args = [{'url':unicode(url), 'has_crawled':True, 'emails':unicode(",".join(emails))}]
+			args = [{'title':title, 'url':unicode(url), 'has_crawled':True, 'emails':unicode(",".join(emails))}]
+			for email in emails:
+				print email
+				email_args = [{'url':unicode(url), 'title':title, 'email':unicode(email)}]
+				self.connection.execute(self.emails_table.insert(), email_args)
+			
 		result = self.connection.execute(self.website_table.insert(), args)
 		if result:
 			return True
@@ -76,6 +89,12 @@ class CrawlerDb:
 			.where(self.website_table.c.id==website.id) \
 			.values(has_crawled=True, emails=new_emails)
 		self.connection.execute(stmt)
+		if (new_emails != None):
+			for email in new_emails:
+					print 'level 2'+email
+					email_args = [{'url':unicode(website.url), 'title':unicode(website.title), 'email':unicode(email)}]
+					self.connection.execute(self.emails_table.insert(), email_args)
+
 
 
 	def get_all_emails(self):

@@ -16,12 +16,13 @@ google_adurl_regex = re.compile('adurl=(.*?)"')
 google_url_regex = re.compile('url\?q=(.*?)&amp;sa=')
 email_regex = re.compile('([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4})', re.IGNORECASE)
 url_regex = re.compile('<a\s.*?href=[\'"](.*?)[\'"].*?>')
+title_regex = re.compile('<title.*?>(.+?)</title>')
 # Below url_regex will run into 'Castrophic Backtracking'!
 # http://stackoverflow.com/questions/8010005/python-re-infinite-execution
 # url_regex = re.compile('<a\s(?:.*?\s)*?href=[\'"](.*?)[\'"].*?>')
 
 # Maximum number of search results to start the crawl
-MAX_SEARCH_RESULTS = 5
+MAX_SEARCH_RESULTS = 10
 
 EMAILS_FILENAME = 'data/emails.csv'
 DOMAINS_FILENAME = 'data/domains.csv'
@@ -58,13 +59,16 @@ def crawl(keywords):
 	# Next page: https://www.google.com/search?q=singapore+web+development&start=10
 	# Google search results are paged with 10 urls each. There are also adurls
 	for page_index in range(0, MAX_SEARCH_RESULTS, 10):
-		query = {'q': keywords}
+		query = {'q': keywords, 'p': keywords}
 		url = 'http://www.google.com/search?' + urllib.urlencode(query) + '&start=' + str(page_index)
+		#url = 'https://search.yahoo.com/search?' + urllib.urlencode(query)  
 		data = retrieve_html(url)
-		# 	print("data: \n%s" % data)
+		#print("data: \n%s" % data)
 		for url in google_url_regex.findall(data):
 			db.enqueue(url)
 		for url in google_adurl_regex.findall(data):
+			db.enqueue(url)
+		for url in url_regex.findall(data):
 			db.enqueue(url)
 		
 	# Step 2: Crawl each of the search result
@@ -86,8 +90,9 @@ def retrieve_html(url):
 
 	On any error, return.
 	"""
-	req = urllib2.Request(url)
-	req.add_header('User-Agent', 'Just-Crawling 0.1')
+
+	req = urllib2.Request(url,)
+	req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 6.0; WOW64) AppleWebKit/534.24 (KHTML, like Gecko) Chrome/11.0.696.16 Safari/534.24')
 	request = None
 	status = 0
 	try:
@@ -97,7 +102,9 @@ def retrieve_html(url):
 		logger.error("Exception at url: %s\n%s" % (url, e))
 	except urllib2.HTTPError, e:
 		status = e.code
+		logger.error("Exception at url: %s\n%s" % (url, e))
 	except Exception, e:
+		logger.error("Exception at url: %s\n%s" % (url, e))
 		return 
 	if status == 0:
 		status = 200
@@ -105,6 +112,7 @@ def retrieve_html(url):
 	try:
 		data = request.read()
 	except Exception, e:
+		logger.error("Exception at url: %s\n%s" % (url, e))
 		return
 
 	return str(data)
@@ -135,7 +143,14 @@ def find_emails_2_level_deep(url):
 			if (html == None):
 				continue
 			email_set = find_emails_in_html(html)
-			db.enqueue(link, list(email_set))
+			match = title_regex.findall(html)
+			print match
+			if (len(match) > 0 ):
+				title = match[0]
+			else:
+				title = ''
+			#title = match.group(1);
+			db.enqueue(link, list(email_set), title)
 
 		# We return an empty set
 		return set()
